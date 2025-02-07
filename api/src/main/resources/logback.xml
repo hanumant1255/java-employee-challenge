@@ -1,0 +1,46 @@
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+
+    <logger name="com.reliaquest.api" level="debug" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="error">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
+
+<!--<Configuration status="warn" monitorInterval="30">-->
+<!--    <Appenders>-->
+<!--        <Console name="Console" target="SYSTEM_OUT">-->
+<!--            <PatternLayout pattern="%d{HH:mm:ss.SSS} ${env:SYS_ID:-UNKNOWN} [%t, %X{traceId}/%X{spanId}] %-5level %logger{36} - %msg%n"/>-->
+<!--        </Console>-->
+<!--    </Appenders>-->
+<!--    <SumoLogicAppender name="SumoAppender" url="">-->
+<!--        <PatternLayout pattern="%d{ISO8601} [%t] %-5p %c{1.} %X - %m%n" />-->
+<!--    </SumoLogicAppender>-->
+<!--    <Loggers>-->
+<!--        <Logger name="com.reliaquest.api" level="DEBUG" additivity="false">-->
+<!--            <AppenderRef ref="Console"/>-->
+<!--        </Logger>-->
+<!--        <Logger name="com.reliaquest.api" level="INFO" additivity="false">-->
+<!--            <AppenderRef ref="SumoAppender"/>-->
+<!--        </Logger>-->
+<!--        <Logger name="org.springframework" level="INFO" additivity="false">-->
+<!--            <AppenderRef ref="Console"/>-->
+<!--            <AppenderRef ref="SumoAppender"/>-->
+<!--        </Logger>-->
+<!--        <Root level="INFO">-->
+<!--            <AppenderRef ref="Console"/>-->
+<!--            <AppenderRef ref="SumoAppender"/>-->
+<!--        </Root>-->
+<!--    </Loggers>-->
+<!--</Configuration>-->

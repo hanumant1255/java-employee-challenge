@@ -14,9 +14,16 @@ dependencies {
     implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.3.1'
     implementation 'org.springframework:spring-tx'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
 }
 
+test {
+    useJUnitPlatform()
+}
 
 springBoot {
     mainClass = 'com.reliaquest.api.ApiApplication'

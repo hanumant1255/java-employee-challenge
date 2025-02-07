@@ -1,23 +1,26 @@
 package com.reliaquest.api.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.dozer.DozerBeanMapper;
-import org.springframework.stereotype.Service;
+import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_CIRCUIT_BREAKER;
+import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_RETRY;
 
 import com.reliaquest.api.dto.EmployeeDTO;
 import com.reliaquest.api.dto.EmployeeRequest;
-import com.reliaquest.api.errorhandlers.EmployeeNotFoundException;
-import com.reliaquest.api.errorhandlers.EmployeeServiceException;
-import com.reliaquest.api.model.Employee;
+import com.reliaquest.api.errorhandlers.APIException;
 import com.reliaquest.api.model.EmployeeApiResponse;
 import com.reliaquest.api.model.EmployeeListApiResponse;
 import com.reliaquest.api.repository.MockEmployeeRestClient;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.dozer.DozerBeanMapper;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
-// Note  - Not adding transaction management support since there is no database involved.
 @Service
 @Slf4j
 @AllArgsConstructor
@@ -26,127 +29,108 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
     private final MockEmployeeRestClient mockEmployeeRestClient;
     private final DozerBeanMapper dozerBeanMapper;
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<EmployeeDTO> getAllEmployees() {
         log.debug("Fetching all employees from the API");
         EmployeeListApiResponse employeeListApiResponse = mockEmployeeRestClient.getAllEmployees();
-
-        if (employeeListApiResponse == null || employeeListApiResponse.getData() == null) {
-            log.error("Failed to fetch employee data from API");
-            throw new EmployeeServiceException("Failed to fetch employee data.");
-        }
-
         List<EmployeeDTO> employees = employeeListApiResponse.getData().stream()
                 .map(employee -> dozerBeanMapper.map(employee, EmployeeDTO.class))
                 .collect(Collectors.toList());
-
-        if (employees.isEmpty()) {
-            log.warn("No employees found");
-            throw new EmployeeNotFoundException("No employees found.");
-        }
-
         log.debug("Successfully retrieved {} employees from API", employees.size());
         return employees;
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<EmployeeDTO> getEmployeesByNameSearch(String searchString) {
-        log.debug("Searching employees by name: '{}'", searchString);
+        log.info("Searching employees by name: '{}'", searchString);
         List<EmployeeDTO> employees = getAllEmployees().stream()
                 .filter(employee -> employee.getEmployeeName().toLowerCase().contains(searchString.toLowerCase()))
                 .collect(Collectors.toList());
-
-        if (employees.isEmpty()) {
-            log.warn("No employees found matching '{}'", searchString);
-            throw new EmployeeNotFoundException("No employees found matching: " + searchString);
-        }
-
-        log.debug("Found {} employees matching '{}'", employees.size(), searchString);
+        log.info("Found {} employees matching '{}'", employees.size(), searchString);
         return employees;
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public EmployeeDTO getEmployeeById(String id) {
-        log.debug("Fetching employee with ID: {}", id);
-        EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.getEmployeeById(id);
-
-        if (employeeApiResponse == null || employeeApiResponse.getData() == null) {
-            log.error("Employee with ID {} not found", id);
-            throw new EmployeeNotFoundException("Employee not found with ID: " + id);
+        EmployeeDTO employee;
+        try {
+            log.info("Fetching employee with ID: {}", id);
+            validateUUID(id);
+            EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.getEmployeeById(id);
+            if (employeeApiResponse == null || employeeApiResponse.getData() == null) {
+                log.error("Employee with ID {} not found", id);
+                throw new APIException("object.not.found", new Object[] {id}, HttpStatus.NOT_FOUND);
+            }
+            employee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
+            log.info("Successfully retrieved employee with ID: {}", id);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new APIException("object.not.found", new Object[] {id}, HttpStatus.NOT_FOUND);
         }
-
-        EmployeeDTO employee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
-        log.debug("Successfully retrieved employee with ID: {}", id);
         return employee;
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public Integer getHighestSalaryOfEmployees() {
-        log.debug("Fetching highest salary of employees");
+        log.info("Fetching highest salary of employees");
         return getAllEmployees().stream()
                 .mapToInt(EmployeeDTO::getEmployeeSalary)
                 .max()
-                .orElseThrow(() -> {
-                    log.warn("No employees found to calculate highest salary");
-                    return new EmployeeNotFoundException("No employees available to calculate the highest salary.");
-                });
+                .orElse(0);
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<String> getTopTenHighestEarningEmployeeNames() {
-        log.debug("Fetching top 10 highest earning employees");
+        log.info("Fetching top 10 highest earning employees");
         List<String> topEmployees = getAllEmployees().stream()
                 .sorted((e1, e2) -> e2.getEmployeeSalary().compareTo(e1.getEmployeeSalary()))
                 .limit(10)
                 .map(EmployeeDTO::getEmployeeName)
                 .collect(Collectors.toList());
-
-        if (topEmployees.isEmpty()) {
-            log.warn("No employees found to list top 10 earners");
-            throw new EmployeeNotFoundException("No employees available to determine top 10 highest earners.");
-        }
-
-        log.debug("Successfully retrieved top 10 highest earning employees");
+        log.info("Successfully retrieved top 10 highest earning employees");
         return topEmployees;
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public EmployeeDTO createEmployee(EmployeeRequest employeeRequest) {
-        log.debug("Creating new employee with request data: {}", employeeRequest);
-        try {
-            Employee employee = dozerBeanMapper.map(employeeRequest, Employee.class);
-            employee.setId(null);
-
-            EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.createEmployee(employee);
-
-            if (employeeApiResponse == null || employeeApiResponse.getData() == null) {
-                log.error("Failed to create employee with data: {}", employeeRequest);
-                throw new EmployeeServiceException("Employee creation failed.");
-            }
-
-            EmployeeDTO createdEmployee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
-            log.debug("Successfully created employee with ID: {}", createdEmployee.getId());
-            return createdEmployee;
-        } catch (Exception e) {
-            log.error("Error occurred while creating employee: {}", e.getMessage(), e);
-            throw new EmployeeServiceException("Error occurred while creating employee: " + e.getMessage());
-        }
+        log.info("Creating new employee with request data: {}", employeeRequest);
+        EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.createEmployee(employeeRequest);
+        EmployeeDTO createdEmployee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
+        log.info("Successfully created employee with ID: {}", createdEmployee.getId());
+        return createdEmployee;
     }
 
+    @Retry(name = MOCK_SERVICE_API_RETRY)
+    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public String deleteEmployeeById(String id) {
-        log.debug("Deleting employee with ID: {}", id);
+        log.info("Deleting employee with ID: {}", id);
+        validateUUID(id);
+        var employee = getEmployeeById(id);
+        if (Boolean.FALSE.equals(mockEmployeeRestClient.deleteEmployeeByName(employee.getEmployeeName()))) {
+            throw new APIException("failed.to.delete.record", new Object[] {}, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        log.info("Successfully deleted employee with ID: {}", id);
+        return employee.getEmployeeName();
+    }
+
+    private void validateUUID(String id) {
         try {
-            var employee = getEmployeeById(id);
-            if (Boolean.FALSE.equals(mockEmployeeRestClient.deleteEmployeeByName(employee.getEmployeeName()))) {
-                log.error("Failed to delete employee with ID: {}", id);
-                throw new EmployeeNotFoundException("Employee deletion failed. No employee found with ID: " + id);
-            }
-            log.debug("Successfully deleted employee with ID: {}", id);
-            return employee.getEmployeeName();
-        } catch (Exception e) {
-            log.error("Error occurred while deleting employee with ID {}: {}", id, e.getMessage(), e);
-            throw new EmployeeServiceException("Error occurred while deleting employee: " + e.getMessage());
+            UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid UUID format for ID: {}", id);
+            throw new APIException("invalid.uuid.format", new Object[] {id}, HttpStatus.BAD_REQUEST);
         }
     }
 }

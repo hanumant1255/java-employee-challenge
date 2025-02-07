@@ -1,16 +1,6 @@
 package com.reliaquest.api.config;
 
-import java.util.List;
-
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.dozer.DozerBeanMapper;
-import org.dozer.loader.api.BeanMappingBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
+import static org.dozer.loader.api.FieldsMappingOptions.customConverter;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -19,12 +9,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reliaquest.api.dto.EmployeeDTO;
 import com.reliaquest.api.model.Employee;
 import com.reliaquest.api.util.UUIDConverter;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-
-import static org.dozer.loader.api.FieldsMappingOptions.customConverter;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.dozer.DozerBeanMapper;
+import org.dozer.loader.api.BeanMappingBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @Slf4j
+@EnableRetry
 public class AppConfig {
 
     @Bean
@@ -47,8 +47,7 @@ public class AppConfig {
         mapper.addMapping(new BeanMappingBuilder() {
             @Override
             protected void configure() {
-                mapping(Employee.class, EmployeeDTO.class)
-                        .fields("id", "id", customConverter(UUIDConverter.class));
+                mapping(Employee.class, EmployeeDTO.class).fields("id", "id", customConverter(UUIDConverter.class));
             }
         });
         return mapper;

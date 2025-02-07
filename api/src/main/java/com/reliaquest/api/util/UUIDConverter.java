@@ -1,7 +1,6 @@
 package com.reliaquest.api.util;
 
 import java.util.UUID;
-
 import org.dozer.DozerConverter;
 
 public class UUIDConverter extends DozerConverter<UUID, UUID> {

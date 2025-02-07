@@ -1,32 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<mappings xmlns="http://dozer.sourceforge.net"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://dozer.sourceforge.net
-          http://dozer.sourceforge.net/schema/beanmapping.xsd">
-    <!-- Mapping from EmployeeRequest to Employee -->
-    <mapping map-id="employeeMapping">
-        <class-a>com.reliaquest.api.dto.EmployeeRequest</class-a>
-        <class-b>com.reliaquest.api.model.Employee</class-b>
-        <field>
-            <a>name</a>
-            <b>employeeName</b>
-        </field>
-        <field>
-            <a>salary</a>
-            <b>employeeSalary</b>
-        </field>
-        <field>
-            <a>age</a>
-            <b>employeeAge</b>
-        </field>
-        <field>
-            <a>title</a>
-            <b>employeeTitle</b>
-        </field>
-        <field>
-            <a>email</a>
-            <b>employeeEmail</b>
-        </field>
-    </mapping>
-
+<mappings xmlns="http://dozer.sourceforge.net" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://dozer.sourceforge.net http://dozer.sourceforge.net/schema/beanmapping.xsd">
+    <configuration>
+        <map-null>false</map-null>
+    </configuration>
 </mappings>

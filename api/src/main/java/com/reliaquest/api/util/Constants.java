@@ -8,6 +8,12 @@ public class Constants {
     public static final String API_V_1_EMPLOYEE = "/api/v1/employee";
     public static final String SLASH = "/";
 
-    public static final String EMPLOYEE_SERVICE_ERROR = "employee.service.error";
-    public static final String EMPLOYEE_NOT_FOUND = "employee.not.found";
+    public static final String MOCK_SERVICE_API_RETRY = "mockServiceApiRetry";
+    public static final String MOCK_SERVICE_API_CIRCUIT_BREAKER = "mockServiceApiCircuitBreaker";
+
+    public static final String INTERNAL_SERVER_ERROR = "internal.server.error";
+    public static final String HTTP_ERROR = "http.error";
+    public static final String TOO_MANY_REQUESTS = "too.many.requests";
+    public static final String INVALID_REQUEST = "invalid.request";
+    public static final String BAD_REQUEST = "bad.request";
 }

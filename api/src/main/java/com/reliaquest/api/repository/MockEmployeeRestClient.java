@@ -5,23 +5,24 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.reliaquest.api.config.AppProperties;
-import com.reliaquest.api.model.Employee;
+import com.reliaquest.api.dto.EmployeeRequest;
 import com.reliaquest.api.model.EmployeeApiResponse;
 import com.reliaquest.api.model.EmployeeListApiResponse;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import static com.reliaquest.api.util.Constants.API_V_1_EMPLOYEE;
 import static com.reliaquest.api.util.Constants.APPLICATION_JSON;
 import static com.reliaquest.api.util.Constants.CONTENT_TYPE;
 import static com.reliaquest.api.util.Constants.SLASH;
 
-
-//TODO handle rate limiting
 @Component
 @AllArgsConstructor
+@Slf4j
 public class MockEmployeeRestClient {
 
     private final RestTemplate restTemplate;
@@ -37,39 +38,65 @@ public class MockEmployeeRestClient {
         return headers;
     }
 
+    private <T> T executeApiCall(String url, HttpMethod method, Object requestBody, Class<T> responseType) {
+        log.debug("Calling API: {} {}", method, url);
+        try {
+            ResponseEntity<T> response;
+            if (method == HttpMethod.GET) {
+                response = restTemplate.getForEntity(url, responseType);
+            } else if (method == HttpMethod.POST) {
+                HttpEntity<?> entity = new HttpEntity<>(requestBody, createJsonHeaders());
+                response = restTemplate.postForEntity(url, entity, responseType);
+            } else if (method == HttpMethod.DELETE) {
+                response = restTemplate.exchange(url, HttpMethod.DELETE, null, responseType);
+            } else {
+                throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+            }
+            return handleResponse(response, url, method);
+
+        } catch (HttpClientErrorException ex) {
+            log.error(
+                    "API call failed: {} {} - Status: {}, Response: {}",
+                    method,
+                    url,
+                    ex.getStatusCode(),
+                    ex.getResponseBodyAsString(),
+                    ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Unexpected error calling API: {} {}", method, url, ex);
+            throw ex;
+        }
+    }
+
+    private <T> T handleResponse(ResponseEntity<T> response, String url, HttpMethod method) {
+        if (response.getStatusCode().is2xxSuccessful()) {
+            log.trace("Successful API call: {} {}", method, url);
+            return response.getBody();
+        } else {
+            log.error("API call failed: {} {} - Status: {}", method, url, response.getStatusCode());
+            throw new RuntimeException(
+                    "API call failed with status: " + response.getStatusCode()); // Or custom exception
+        }
+    }
+
     public EmployeeListApiResponse getAllEmployees() {
         String url = buildUrl("");
-        ResponseEntity<EmployeeListApiResponse> response =
-                restTemplate.getForEntity(url, EmployeeListApiResponse.class);
-        return handleResponse(response);
+        return executeApiCall(url, HttpMethod.GET, null, EmployeeListApiResponse.class);
     }
 
     public EmployeeApiResponse getEmployeeById(String id) {
         String url = buildUrl(SLASH + id);
-        ResponseEntity<EmployeeApiResponse> response = restTemplate.getForEntity(url, EmployeeApiResponse.class);
-        return handleResponse(response);
+        return executeApiCall(url, HttpMethod.GET, null, EmployeeApiResponse.class);
     }
 
-    public EmployeeApiResponse createEmployee(Employee employee) {
+    public EmployeeApiResponse createEmployee(EmployeeRequest employeeRequest) {
         String url = buildUrl("");
-        HttpEntity<Employee> entity = new HttpEntity<>(employee, createJsonHeaders());
-        ResponseEntity<EmployeeApiResponse> response =
-                restTemplate.postForEntity(url, entity, EmployeeApiResponse.class);
-        return handleResponse(response);
+        return executeApiCall(url, HttpMethod.POST, employeeRequest, EmployeeApiResponse.class);
     }
 
     public Boolean deleteEmployeeByName(String name) {
         String url = buildUrl(SLASH + name);
-        ResponseEntity<Boolean> response =
-                restTemplate.exchange(url, HttpMethod.DELETE, null, Boolean.class);
-        return handleResponse(response);
-    }
-
-    private <T> T handleResponse(ResponseEntity<T> response) {
-        if (response.getStatusCode().is2xxSuccessful()) {
-            return response.getBody();
-        } else {
-            throw new RuntimeException("API call failed with status: " + response.getStatusCode());
-        }
+        return executeApiCall(url, HttpMethod.DELETE, null, Boolean.class);
     }
 }

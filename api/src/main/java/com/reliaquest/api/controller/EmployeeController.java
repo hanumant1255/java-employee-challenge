@@ -63,7 +63,9 @@ public class EmployeeController implements IEmployeeController<EmployeeDTO, Empl
         return ResponseEntity.ok(highestSalary);
     }
 
-    @Operation(summary = "Get top 10 highest earning employees", description = "Fetch top 10 highest earning employees.")
+    @Operation(
+            summary = "Get top 10 highest earning employees",
+            description = "Fetch top 10 highest earning employees.")
     @Override
     public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames() {
         log.debug("Request to fetch top 10 highest earning employees");

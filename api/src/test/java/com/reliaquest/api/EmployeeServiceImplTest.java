@@ -1,10 +1,27 @@
 package com.reliaquest.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.when;
+
+import com.reliaquest.api.dto.EmployeeDTO;
+import com.reliaquest.api.dto.EmployeeDeleteRequest;
+import com.reliaquest.api.dto.EmployeeRequest;
+import com.reliaquest.api.errorhandlers.APIException;
+import com.reliaquest.api.model.Employee;
+import com.reliaquest.api.model.EmployeeApiResponse;
+import com.reliaquest.api.model.EmployeeDeleteApiResponse;
+import com.reliaquest.api.model.EmployeeListApiResponse;
+import com.reliaquest.api.repository.MockEmployeeRestClient;
+import com.reliaquest.api.service.EmployeeServiceImpl;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-
 import org.dozer.DozerBeanMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,23 +30,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-
-import com.reliaquest.api.dto.EmployeeDTO;
-import com.reliaquest.api.dto.EmployeeRequest;
-import com.reliaquest.api.errorhandlers.APIException;
-import com.reliaquest.api.model.Employee;
-import com.reliaquest.api.model.EmployeeApiResponse;
-import com.reliaquest.api.model.EmployeeListApiResponse;
-import com.reliaquest.api.repository.MockEmployeeRestClient;
-import com.reliaquest.api.service.EmployeeServiceImpl;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EmployeeServiceImplTest {
@@ -45,7 +45,9 @@ class EmployeeServiceImplTest {
 
     private EmployeeDTO employeeDTO;
     private EmployeeRequest employeeRequest;
+    private EmployeeDeleteRequest employeeDeleteRequest;
     private EmployeeApiResponse employeeApiResponse;
+    private EmployeeDeleteApiResponse employeeDeleteApiResponse;
     private EmployeeListApiResponse employeeListApiResponse;
     private final UUID employeeId = UUID.randomUUID();
 
@@ -56,7 +58,9 @@ class EmployeeServiceImplTest {
         Employee employee =
                 new Employee(employeeId, "Hanumant Shinde", 50000, 30, "Engineer", "hanumantshinde@reliaquest.com");
         employeeRequest = new EmployeeRequest("Hanumant Shinde", 50000, 30, "Engineer");
+        employeeDeleteRequest = new EmployeeDeleteRequest("Hanumant Shinde");
         employeeApiResponse = new EmployeeApiResponse(employee, "Success");
+        employeeDeleteApiResponse = new EmployeeDeleteApiResponse(true, "success");
         employeeListApiResponse = new EmployeeListApiResponse(Collections.singletonList(employee), "Success");
     }
 
@@ -143,7 +147,7 @@ class EmployeeServiceImplTest {
     @Test
     void deleteEmployeeById_shouldReturnDeletedEmployeeName() {
         when(mockEmployeeRestClient.getEmployeeById(employeeId.toString())).thenReturn(employeeApiResponse);
-        when(mockEmployeeRestClient.deleteEmployeeByName("Hanumant Shinde")).thenReturn(true);
+        when(mockEmployeeRestClient.deleteEmployeeByName(employeeDeleteRequest)).thenReturn(employeeDeleteApiResponse);
         when(dozerBeanMapper.map(any(), eq(EmployeeDTO.class))).thenReturn(employeeDTO);
 
         String deletedEmployeeName = employeeService.deleteEmployeeById(employeeId.toString());
@@ -154,7 +158,8 @@ class EmployeeServiceImplTest {
     @Test
     void deleteEmployeeById_shouldThrowExceptionWhenDeletionFails() {
         when(mockEmployeeRestClient.getEmployeeById(employeeId.toString())).thenReturn(employeeApiResponse);
-        when(mockEmployeeRestClient.deleteEmployeeByName("Hanumant Shinde")).thenReturn(false);
+        employeeDeleteApiResponse.setData(false);
+        when(mockEmployeeRestClient.deleteEmployeeByName(employeeDeleteRequest)).thenReturn(employeeDeleteApiResponse);
         when(dozerBeanMapper.map(any(), eq(EmployeeDTO.class))).thenReturn(employeeDTO);
 
         APIException exception =

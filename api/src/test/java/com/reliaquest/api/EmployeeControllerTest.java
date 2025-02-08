@@ -1,9 +1,18 @@
 package com.reliaquest.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.reliaquest.api.controller.EmployeeController;
+import com.reliaquest.api.dto.EmployeeDTO;
+import com.reliaquest.api.dto.EmployeeRequest;
+import com.reliaquest.api.service.EmployeeService;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,17 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import com.reliaquest.api.controller.EmployeeController;
-import com.reliaquest.api.dto.EmployeeDTO;
-import com.reliaquest.api.dto.EmployeeRequest;
-import com.reliaquest.api.service.EmployeeService;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EmployeeControllerTest {
@@ -58,8 +56,7 @@ class EmployeeControllerTest {
 
     @Test
     void testGetEmployeesByNameSearch() {
-        when(employeeService.getEmployeesByNameSearch("John"))
-                .thenReturn(List.of(mockEmployee));
+        when(employeeService.getEmployeesByNameSearch("John")).thenReturn(List.of(mockEmployee));
 
         ResponseEntity<List<EmployeeDTO>> response = employeeController.getEmployeesByNameSearch("John");
 

@@ -1,24 +1,58 @@
 plugins {
     id 'project-conventions'
+    id 'jacoco'
+}
+
+ext {
+    springdocVersion = '2.2.0'
+    swaggerVersion = '2.2.14'
+    jakartaValidationVersion = '3.1.1'
+    dozerVersion = '5.5.1'
+    httpClientVersion = '5.3.1'
+    resilience4jVersion = '2.2.0'
+    mockserverVersion = '5.15.0'
+    testcontainersVersion = '1.20.4'
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation group: 'org.springdoc', name: 'springdoc-openapi-starter-webmvc-ui', version: '2.2.0'
-    implementation 'io.swagger.core.v3:swagger-annotations:2.2.14'
-    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
-    implementation 'org.springframework.retry:spring-retry'
-    implementation 'net.sf.dozer:dozer:5.5.1'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
-    implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.3.1'
-    implementation 'org.springframework:spring-tx'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    // Spring Boot Core Dependencies
+    implementation(
+            'org.springframework.boot:spring-boot-starter-web',
+            'org.springframework.boot:spring-boot-starter-validation',
+            'org.springframework.boot:spring-boot-starter-actuator',
+            'org.springframework.boot:spring-boot-starter-aop',
+            'org.springframework:spring-tx'
+    )
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // API Documentation
+    implementation(
+            "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}",
+            "io.swagger.core.v3:swagger-annotations:${swaggerVersion}"
+    )
 
+    // Validation
+    implementation "jakarta.validation:jakarta.validation-api:${jakartaValidationVersion}"
+
+    // Resilience & Retry
+    implementation(
+            'org.springframework.retry:spring-retry',
+            "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
+    )
+
+    // HTTP Client
+    implementation "org.apache.httpcomponents.client5:httpclient5:${httpClientVersion}"
+
+    // Object Mapping
+    implementation "net.sf.dozer:dozer:${dozerVersion}"
+
+    // Test Dependencies
+    testImplementation(
+            'org.springframework.boot:spring-boot-starter-test',
+            'io.rest-assured:rest-assured',
+            "org.testcontainers:mockserver:${testcontainersVersion}",
+            "org.mock-server:mockserver-netty:${mockserverVersion}",
+            "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    )
 }
 
 test {
@@ -27,4 +61,21 @@ test {
 
 springBoot {
     mainClass = 'com.reliaquest.api.ApiApplication'
+}
+
+jacoco {
+    toolVersion = "0.8.8"
+}
+
+tasks.named('test') {
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+tasks.jacocoTestReport {
+    dependsOn tasks.test
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
+    }
 }

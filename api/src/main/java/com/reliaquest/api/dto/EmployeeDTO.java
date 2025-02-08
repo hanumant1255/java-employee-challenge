@@ -1,8 +1,7 @@
 package com.reliaquest.api.dto;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

@@ -4,9 +4,11 @@ import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_CIRCUIT_BREAKER
 import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_RETRY;
 
 import com.reliaquest.api.dto.EmployeeDTO;
+import com.reliaquest.api.dto.EmployeeDeleteRequest;
 import com.reliaquest.api.dto.EmployeeRequest;
 import com.reliaquest.api.errorhandlers.APIException;
 import com.reliaquest.api.model.EmployeeApiResponse;
+import com.reliaquest.api.model.EmployeeDeleteApiResponse;
 import com.reliaquest.api.model.EmployeeListApiResponse;
 import com.reliaquest.api.repository.MockEmployeeRestClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -24,13 +26,13 @@ import org.springframework.web.client.HttpClientErrorException;
 @Service
 @Slf4j
 @AllArgsConstructor
+@Retry(name = MOCK_SERVICE_API_RETRY)
+@CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
 public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, EmployeeRequest> {
 
     private final MockEmployeeRestClient mockEmployeeRestClient;
     private final DozerBeanMapper dozerBeanMapper;
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<EmployeeDTO> getAllEmployees() {
         log.debug("Fetching all employees from the API");
@@ -42,8 +44,6 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
         return employees;
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<EmployeeDTO> getEmployeesByNameSearch(String searchString) {
         log.info("Searching employees by name: '{}'", searchString);
@@ -54,8 +54,6 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
         return employees;
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public EmployeeDTO getEmployeeById(String id) {
         EmployeeDTO employee;
@@ -75,8 +73,6 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
         return employee;
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public Integer getHighestSalaryOfEmployees() {
         log.info("Fetching highest salary of employees");
@@ -86,8 +82,6 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
                 .orElse(0);
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public List<String> getTopTenHighestEarningEmployeeNames() {
         log.info("Fetching top 10 highest earning employees");
@@ -100,8 +94,6 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
         return topEmployees;
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public EmployeeDTO createEmployee(EmployeeRequest employeeRequest) {
         log.info("Creating new employee with request data: {}", employeeRequest);
@@ -111,14 +103,15 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
         return createdEmployee;
     }
 
-    @Retry(name = MOCK_SERVICE_API_RETRY)
-    @CircuitBreaker(name = MOCK_SERVICE_API_CIRCUIT_BREAKER)
     @Override
     public String deleteEmployeeById(String id) {
         log.info("Deleting employee with ID: {}", id);
         validateUUID(id);
         var employee = getEmployeeById(id);
-        if (Boolean.FALSE.equals(mockEmployeeRestClient.deleteEmployeeByName(employee.getEmployeeName()))) {
+        EmployeeDeleteRequest employeeDeleteRequest = new EmployeeDeleteRequest(employee.getEmployeeName());
+        EmployeeDeleteApiResponse deleteApiResponse =
+                mockEmployeeRestClient.deleteEmployeeByName(employeeDeleteRequest);
+        if (Boolean.FALSE.equals(deleteApiResponse.getData())) {
             throw new APIException("failed.to.delete.record", new Object[] {}, HttpStatus.INTERNAL_SERVER_ERROR);
         }
         log.info("Successfully deleted employee with ID: {}", id);

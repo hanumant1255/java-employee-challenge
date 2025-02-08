@@ -46,7 +46,6 @@ public class AppProperties implements Validator, ApplicationContextAware {
     @Data
     public static class MockEmployeeService {
         private String url;
-        private int retryAttempts;
     }
 
     @Override

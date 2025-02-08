@@ -92,7 +92,6 @@ public class MockEmployeeRestClient {
     }
 
     public EmployeeApiResponse createEmployee(EmployeeRequest employeeRequest) {
-        String url = getUrl();
         return executeApiCall(getUrl(), HttpMethod.POST, employeeRequest, EmployeeApiResponse.class);
     }
 

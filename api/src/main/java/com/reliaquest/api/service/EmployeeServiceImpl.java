@@ -1,7 +1,10 @@
 package com.reliaquest.api.service;
 
+import static com.reliaquest.api.util.Constants.FAILED_TO_DELETE_RECORD;
+import static com.reliaquest.api.util.Constants.INVALID_UUID_FORMAT;
 import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_CIRCUIT_BREAKER;
 import static com.reliaquest.api.util.Constants.MOCK_SERVICE_API_RETRY;
+import static com.reliaquest.api.util.Constants.OBJECT_NOT_FOUND;
 
 import com.reliaquest.api.dto.EmployeeDTO;
 import com.reliaquest.api.dto.EmployeeDeleteRequest;
@@ -13,6 +16,7 @@ import com.reliaquest.api.model.EmployeeListApiResponse;
 import com.reliaquest.api.repository.MockEmployeeRestClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,47 +39,35 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
 
     @Override
     public List<EmployeeDTO> getAllEmployees() {
-        log.debug("Fetching all employees from the API");
-        EmployeeListApiResponse employeeListApiResponse = mockEmployeeRestClient.getAllEmployees();
-        List<EmployeeDTO> employees = employeeListApiResponse.getData().stream()
-                .map(employee -> dozerBeanMapper.map(employee, EmployeeDTO.class))
-                .collect(Collectors.toList());
-        log.debug("Successfully retrieved {} employees from API", employees.size());
+        EmployeeListApiResponse response = mockEmployeeRestClient.getAllEmployees();
+        List<EmployeeDTO> employees = mapEmployeeList(response);
+        log.debug("Retrieved {} employees", employees.size());
         return employees;
     }
 
     @Override
     public List<EmployeeDTO> getEmployeesByNameSearch(String searchString) {
-        log.info("Searching employees by name: '{}'", searchString);
         List<EmployeeDTO> employees = getAllEmployees().stream()
                 .filter(employee -> employee.getEmployeeName().toLowerCase().contains(searchString.toLowerCase()))
                 .collect(Collectors.toList());
-        log.info("Found {} employees matching '{}'", employees.size(), searchString);
+        log.debug("Employees matching '{}': {}", searchString, employees.size());
         return employees;
     }
 
     @Override
     public EmployeeDTO getEmployeeById(String id) {
-        EmployeeDTO employee;
+        validateUUID(id);
         try {
-            log.info("Fetching employee with ID: {}", id);
-            validateUUID(id);
-            EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.getEmployeeById(id);
-            if (employeeApiResponse == null || employeeApiResponse.getData() == null) {
-                log.error("Employee with ID {} not found", id);
-                throw new APIException("object.not.found", new Object[] {id}, HttpStatus.NOT_FOUND);
-            }
-            employee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
-            log.info("Successfully retrieved employee with ID: {}", id);
-        } catch (HttpClientErrorException.NotFound exception) {
-            throw new APIException("object.not.found", new Object[] {id}, HttpStatus.NOT_FOUND);
+            EmployeeApiResponse response = mockEmployeeRestClient.getEmployeeById(id);
+            return mapEmployee(response, id);
+        } catch (HttpClientErrorException.NotFound ex) {
+            log.warn("Employee with ID {} not found", id);
+            throw new APIException(OBJECT_NOT_FOUND, new Object[] {id}, HttpStatus.NOT_FOUND);
         }
-        return employee;
     }
 
     @Override
     public Integer getHighestSalaryOfEmployees() {
-        log.info("Fetching highest salary of employees");
         return getAllEmployees().stream()
                 .mapToInt(EmployeeDTO::getEmployeeSalary)
                 .max()
@@ -84,46 +76,62 @@ public class EmployeeServiceImpl implements EmployeeService<EmployeeDTO, Employe
 
     @Override
     public List<String> getTopTenHighestEarningEmployeeNames() {
-        log.info("Fetching top 10 highest earning employees");
         List<String> topEmployees = getAllEmployees().stream()
-                .sorted((e1, e2) -> e2.getEmployeeSalary().compareTo(e1.getEmployeeSalary()))
+                .sorted(Comparator.comparingInt(EmployeeDTO::getEmployeeSalary).reversed())
                 .limit(10)
                 .map(EmployeeDTO::getEmployeeName)
                 .collect(Collectors.toList());
-        log.info("Successfully retrieved top 10 highest earning employees");
+        log.debug("Top 10 highest earning employees retrieved");
         return topEmployees;
     }
 
     @Override
     public EmployeeDTO createEmployee(EmployeeRequest employeeRequest) {
-        log.info("Creating new employee with request data: {}", employeeRequest);
-        EmployeeApiResponse employeeApiResponse = mockEmployeeRestClient.createEmployee(employeeRequest);
-        EmployeeDTO createdEmployee = dozerBeanMapper.map(employeeApiResponse.getData(), EmployeeDTO.class);
-        log.info("Successfully created employee with ID: {}", createdEmployee.getId());
+        EmployeeApiResponse response = mockEmployeeRestClient.createEmployee(employeeRequest);
+        EmployeeDTO createdEmployee = dozerBeanMapper.map(response.getData(), EmployeeDTO.class);
+        log.info("Employee created with ID: {}", createdEmployee.getId());
         return createdEmployee;
     }
 
     @Override
     public String deleteEmployeeById(String id) {
-        log.info("Deleting employee with ID: {}", id);
         validateUUID(id);
-        var employee = getEmployeeById(id);
-        EmployeeDeleteRequest employeeDeleteRequest = new EmployeeDeleteRequest(employee.getEmployeeName());
-        EmployeeDeleteApiResponse deleteApiResponse =
-                mockEmployeeRestClient.deleteEmployeeByName(employeeDeleteRequest);
-        if (Boolean.FALSE.equals(deleteApiResponse.getData())) {
-            throw new APIException("failed.to.delete.record", new Object[] {}, HttpStatus.INTERNAL_SERVER_ERROR);
+        EmployeeDTO employee = getEmployeeById(id);
+        boolean isDeleted = deleteEmployeeByName(employee.getEmployeeName());
+        if (!isDeleted) {
+            log.error("Failed to delete employee with ID: {}", id);
+            throw new APIException(FAILED_TO_DELETE_RECORD, new Object[] {}, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        log.info("Successfully deleted employee with ID: {}", id);
+        log.info("Employee deleted with ID: {}", id);
         return employee.getEmployeeName();
+    }
+
+    private boolean deleteEmployeeByName(String employeeName) {
+        EmployeeDeleteRequest request = new EmployeeDeleteRequest(employeeName);
+        EmployeeDeleteApiResponse response = mockEmployeeRestClient.deleteEmployeeByName(request);
+        return Boolean.TRUE.equals(response.getData());
     }
 
     private void validateUUID(String id) {
         try {
             UUID.fromString(id);
         } catch (IllegalArgumentException e) {
-            log.error("Invalid UUID format for ID: {}", id);
-            throw new APIException("invalid.uuid.format", new Object[] {id}, HttpStatus.BAD_REQUEST);
+            log.warn("Invalid UUID format: {}", id);
+            throw new APIException(INVALID_UUID_FORMAT, new Object[] {id}, HttpStatus.BAD_REQUEST);
         }
+    }
+
+    private List<EmployeeDTO> mapEmployeeList(EmployeeListApiResponse response) {
+        return response.getData().stream()
+                .map(employee -> dozerBeanMapper.map(employee, EmployeeDTO.class))
+                .collect(Collectors.toList());
+    }
+
+    private EmployeeDTO mapEmployee(EmployeeApiResponse response, String id) {
+        if (response == null || response.getData() == null) {
+            log.warn("Employee with given ID {} not found", id);
+            throw new APIException(OBJECT_NOT_FOUND, new Object[] {id}, HttpStatus.NOT_FOUND);
+        }
+        return dozerBeanMapper.map(response.getData(), EmployeeDTO.class);
     }
 }

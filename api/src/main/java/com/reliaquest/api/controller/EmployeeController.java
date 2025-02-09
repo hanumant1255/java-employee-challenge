@@ -1,5 +1,20 @@
 package com.reliaquest.api.controller;
 
+import static com.reliaquest.api.util.ApiDescriptions.CREATE_EMPLOYEE_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.CREATE_EMPLOYEE_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.DELETE_EMPLOYEE_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.DELETE_EMPLOYEE_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.GET_ALL_EMPLOYEES_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.GET_ALL_EMPLOYEES_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.GET_EMPLOYEE_BY_ID_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.GET_EMPLOYEE_BY_ID_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.GET_HIGHEST_SALARY_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.GET_HIGHEST_SALARY_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.GET_TOP_EARNERS_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.GET_TOP_EARNERS_SUMMARY;
+import static com.reliaquest.api.util.ApiDescriptions.SEARCH_EMPLOYEES_DESC;
+import static com.reliaquest.api.util.ApiDescriptions.SEARCH_EMPLOYEES_SUMMARY;
+
 import com.reliaquest.api.dto.EmployeeDTO;
 import com.reliaquest.api.dto.EmployeeRequest;
 import com.reliaquest.api.service.EmployeeService;
@@ -12,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,69 +41,68 @@ public class EmployeeController implements IEmployeeController<EmployeeDTO, Empl
 
     private final EmployeeService<EmployeeDTO, EmployeeRequest> employeeService;
 
-    @Operation(summary = "Get all employees", description = "This API fetches all the employees present in the system.")
+    @Operation(summary = GET_ALL_EMPLOYEES_SUMMARY, description = GET_ALL_EMPLOYEES_DESC)
     @Override
     public ResponseEntity<List<EmployeeDTO>> getAllEmployees() {
-        log.debug("Request to fetch all employees received");
-        var employees = employeeService.getAllEmployees();
-        log.debug("Successfully retrieved {} employees", employees.size());
+        log.debug("Fetching all employees...");
+        List<EmployeeDTO> employees = employeeService.getAllEmployees();
+        log.info("Retrieved {} employees successfully.", employees.size());
         return ResponseEntity.ok(employees);
     }
 
-    @Operation(summary = "Search employees by name", description = "Search employees by name fragment.")
+    @Operation(summary = SEARCH_EMPLOYEES_SUMMARY, description = SEARCH_EMPLOYEES_DESC)
     @Override
     public ResponseEntity<List<EmployeeDTO>> getEmployeesByNameSearch(
-            @Parameter(description = "Search string for employee names") String searchString) {
-        log.debug("Request to search employees by name with search string: '{}'", searchString);
-        var employees = employeeService.getEmployeesByNameSearch(searchString);
-        log.debug("Found {} employees matching search string: '{}'", employees.size(), searchString);
+            @PathVariable @Parameter(description = "Search string for employee names") String searchString) {
+        log.debug("Searching employees by name: '{}'", searchString);
+        List<EmployeeDTO> employees = employeeService.getEmployeesByNameSearch(searchString);
+        log.info("Found {} employees matching search string '{}'", employees.size(), searchString);
         return ResponseEntity.ok(employees);
     }
 
-    @Operation(summary = "Get employee by ID", description = "Fetch employee details by unique ID.")
+    @Operation(summary = GET_EMPLOYEE_BY_ID_SUMMARY, description = GET_EMPLOYEE_BY_ID_DESC)
     @Override
-    public ResponseEntity<EmployeeDTO> getEmployeeById(@Parameter(description = "Employee ID") String id) {
-        log.debug("Request to fetch employee with ID: {}", id);
-        var employee = employeeService.getEmployeeById(id);
-        log.debug("Successfully retrieved employee with ID: {}", id);
+    public ResponseEntity<EmployeeDTO> getEmployeeById(
+            @PathVariable @Parameter(description = "Employee ID") String id) {
+        log.debug("Fetching employee with ID: {}", id);
+        EmployeeDTO employee = employeeService.getEmployeeById(id);
+        log.info("Retrieved employee with ID: {}", id);
         return ResponseEntity.ok(employee);
     }
 
-    @Operation(summary = "Get highest salary of employees", description = "Get the highest salary among all employees.")
+    @Operation(summary = GET_HIGHEST_SALARY_SUMMARY, description = GET_HIGHEST_SALARY_DESC)
     @Override
     public ResponseEntity<Integer> getHighestSalaryOfEmployees() {
-        log.debug("Request to fetch highest salary of employees");
-        var highestSalary = employeeService.getHighestSalaryOfEmployees();
-        log.debug("Successfully retrieved highest salary: {}", highestSalary);
+        log.debug("Fetching highest employee salary...");
+        int highestSalary = employeeService.getHighestSalaryOfEmployees();
+        log.info("Highest salary retrieved: {}", highestSalary);
         return ResponseEntity.ok(highestSalary);
     }
 
-    @Operation(
-            summary = "Get top 10 highest earning employees",
-            description = "Fetch top 10 highest earning employees.")
+    @Operation(summary = GET_TOP_EARNERS_SUMMARY, description = GET_TOP_EARNERS_DESC)
     @Override
     public ResponseEntity<List<String>> getTopTenHighestEarningEmployeeNames() {
-        log.debug("Request to fetch top 10 highest earning employees");
-        var topEarningEmployeeNames = employeeService.getTopTenHighestEarningEmployeeNames();
-        log.debug("Successfully retrieved top 10 highest earning employees");
-        return ResponseEntity.ok(topEarningEmployeeNames);
+        log.debug("Fetching top 10 highest earning employees...");
+        List<String> topEarners = employeeService.getTopTenHighestEarningEmployeeNames();
+        log.info("Retrieved top 10 highest earning employees.");
+        return ResponseEntity.ok(topEarners);
     }
 
-    @Operation(summary = "Create a new employee", description = "Create a new employee with the provided details.")
+    @Operation(summary = CREATE_EMPLOYEE_SUMMARY, description = CREATE_EMPLOYEE_DESC)
     @Override
-    public ResponseEntity<EmployeeDTO> createEmployee(@Validated EmployeeRequest employeeInput) {
-        log.debug("Request to create a new employee with data: {}", employeeInput);
-        var employee = employeeService.createEmployee(employeeInput);
-        log.debug("Successfully created employee with ID: {}", employee.getId());
+    public ResponseEntity<EmployeeDTO> createEmployee(@RequestBody @Validated EmployeeRequest employeeInput) {
+        log.debug("Creating a new employee: {}", employeeInput);
+        EmployeeDTO employee = employeeService.createEmployee(employeeInput);
+        log.info("Employee created successfully with ID: {}", employee.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(employee);
     }
 
-    @Operation(summary = "Delete employee by ID", description = "Delete an employee by their unique ID.")
+    @Operation(summary = DELETE_EMPLOYEE_SUMMARY, description = DELETE_EMPLOYEE_DESC)
     @Override
-    public ResponseEntity<String> deleteEmployeeById(@Parameter(description = "Employee ID") String id) {
-        log.debug("Request to delete employee with ID: {}", id);
-        var employeeName = employeeService.deleteEmployeeById(id);
-        log.debug("Successfully deleted employee with ID: {}", id);
+    public ResponseEntity<String> deleteEmployeeById(@PathVariable @Parameter(description = "Employee ID") String id) {
+        log.debug("Deleting employee with ID: {}", id);
+        String employeeName = employeeService.deleteEmployeeById(id);
+        log.info("Successfully deleted employee with ID: {}", id);
         return ResponseEntity.ok(employeeName);
     }
 }

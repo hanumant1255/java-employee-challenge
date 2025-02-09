@@ -17,4 +17,7 @@ public class Constants {
     public static final String INVALID_REQUEST = "invalid.request";
     public static final String BAD_REQUEST = "bad.request";
     public static final String CIRCUIT_BREAKER_OPEN = "circuit.breaker.open";
+    public static final String OBJECT_NOT_FOUND = "object.not.found";
+    public static final String FAILED_TO_DELETE_RECORD = "failed.to.delete.record";
+    public static final String INVALID_UUID_FORMAT = "invalid.uuid.format";
 }
